@@ -1,0 +1,20 @@
+GET /exists -> "exists" # so that if it changes then get new URL from fallback (fallback should be static on github or something)
+
+GET / -> Dashboard
+
+POST /get-actions/<id>
+    - { "token": "..." } -> { "actions": [ { "<id>": "<cmd>" } ] }
+
+POST /get-config/<id>
+    - { "token": "..." } -> Config # figure this out later
+
+POST /get-update/ # figure this out later
+
+POST /mark-completed/<id>
+    - { "token": "...", "id": "<id>" } -> "done"
+
+POST /mark-failed/<id>
+    - { "token": "...", "id": "<id>", "info": "..." } -> "done"
+
+POST /log/<id>
+    - { "token": "...", "message": "...", "type": "error" | "warning" | "normal" } -> "done"
