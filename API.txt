@@ -2,19 +2,19 @@ GET /exists -> "exists" # so that if it changes then get new URL from fallback (
 
 GET / -> Dashboard
 
-POST /get-actions/<id>
-    - { "token": "..." } -> { "actions": [ { "<id>": "<cmd>" } ] }
+POST /get-actions/<pc_id>
+    - { "token": "..." } -> { "actions": [ { "<task_id>": "<cmd>" } ] }
 
-POST /get-config/<id>
+POST /get-config/<pc_id>
     - { "token": "..." } -> Config # figure this out later
 
 POST /get-update/ # figure this out later
 
-POST /mark-completed/<id>
-    - { "token": "...", "id": "<id>" } -> "done"
+POST /mark-completed/<pc_id>
+    - { "token": "...", "task_id": "<task_id>" } -> "done"
 
-POST /mark-failed/<id>
-    - { "token": "...", "id": "<id>", "info": "..." } -> "done"
+POST /mark-failed/<pc_id>
+    - { "token": "...", "task_id": "<task_id>", "info": "..." } -> "done"
 
-POST /log/<id>
+POST /log/<pc_id>
     - { "token": "...", "message": "...", "type": "error" | "warning" | "normal" } -> "done"
