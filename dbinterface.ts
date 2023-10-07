@@ -1,4 +1,4 @@
-// DBInterface Alpha 0.1 by blobbybilb (from 6.Oct.2023)
+// DBInterface Alpha 0.2 by blobbybilb (from 7.Oct.2023)
 
 import { Database } from "bun:sqlite"
 
@@ -79,7 +79,7 @@ class DBTable<T extends Item> {
     this.db.query(`INSERT INTO ${this.table} (${rowNamesString}) VALUES (${rowValuesString})`).run()
   }
 
-  get(query: { [P in keyof query<T>]?: ((arg: query<T>[P]) => boolean) | T[P] }): T[] {
+  get(query: { [P in keyof query<T>]?: ((arg: query<T>[P]) => boolean) | T[P] } | Item): T[] {
     let queryResult: T[]
 
     if ((Object.values(query).filter((value) => typeof value !== "function") as validTypes[]).length === 0) {
@@ -113,8 +113,18 @@ class DBTable<T extends Item> {
     this.db.query(`DELETE FROM ${this.table} WHERE ${queryKeysString} = (${queryValuesString})`).run()
   }
 
-  update(item: Item, newItem: T) {
+  update(item: Item, newItem: Item) {
+    const oldItems = this.get(item)
     this.del(item)
-    this.add(newItem)
+    for (const oldItem of oldItems) {
+      this.add({ ...oldItem, ...newItem })
+    }
   }
 }
+
+const db = new DBInterface(":memory:")
+const config = db.openTable<{ name: string, user: string, pass: string }>("config")
+config.add({ name: "test", user: "test", pass: "test" })
+console.log(config.get({ name: "test" }))
+config.update({ name: "test" }, { name: "test", user: "test2" })
+console.log(config.get({ name: "test" }))
