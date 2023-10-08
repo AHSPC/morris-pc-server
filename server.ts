@@ -1,8 +1,16 @@
 import { Hono } from 'hono'
 import { DBInterface } from './dbinterface'
 import { ComputerData, Log, Task, Config } from './types'
+import { config, addComputersToDB, loadConfigIntoDB, ensureTasksTableExists } from './config'
+import { basicAuth } from 'hono/basic-auth'
+import dashboard from './dashboard'
 
 const server = new Hono()
+
+addComputersToDB()
+loadConfigIntoDB()
+ensureTasksTableExists()
+
 const db = new DBInterface("data.sqlite")
 
 const computersDB = db.openTable<ComputerData>("computers")
@@ -10,21 +18,63 @@ const logsDB = db.openTable<Log>("logs")
 const tasksDB = db.openTable<Task>("tasks")
 const configDB = db.openTable<Config>("config")
 
-server.get("/exists", c => c.text("exists"))
+function log(message: string) {
+  logsDB.add({ computerId: "server", message: message, time: Date.now(), type: "normal" })
+}
 
-server.get("/")
+log("Server started, computers added to DB, and tables prepared.")
 
-server.use("/api", async (c, next) => {
+server.get("/exists", c => c.text("exists -- AHS Room 310 PC Manager"))
+
+server.get("/", c => c.redirect("/admin/dashboard"))
+
+server.use("/admin/*", basicAuth({ username: "admin", password: config.admin_pass }))
+server.get("/admin/dashboard", c => {
+  const computerNames = computersDB.get({}).map(e => `${e.name} - ${e.id}`)
+  const tasksInfo = tasksDB.get({}).map(e => ({ computer: e.computerId, command: e.command, details: e.details }))
+  const logs = logsDB.get({}).reverse().map(e => ({
+    computerId: e.computerId,
+    time: new Date(e.time).toLocaleString() as any, // quick hack to make TS not error because type changed (could just move this to template)
+    type: e.type,
+    message: e.message,
+  }))
+  const config = configDB.get({})[0]
+
+  return c.html(dashboard(tasksInfo, computerNames, logs, config.url, config.fallbackURL, config.checkInterval))
+})
+server.post("/admin/run", async c => {
+  // get post form data from text input with name "command"
+  const body = await c.req.parseBody()
+  const command = body["command"] as string
+
+  const computers = computersDB.get({})
+
+  computers.forEach((e) => {
+    tasksDB.add({
+      id: Math.random().toString(),
+      computerId: e.id,
+      name: "(task names are not implemented yet)",
+      command: command,
+      details: "",
+    })
+  })
+
+  return c.text("Task Added!")
+})
+
+server.get("/admin/logout", c => {
+  c.status(401)
+  return c.text("Logged out!")
+})
+
+server.use("/pcs/*", async (c, next) => {
   const token = (c.req.json() as unknown as { token?: string }).token
-
   if (token === undefined) { return c.text("no token") }
-
   if (computersDB.get({ token }).length === 0) { return c.text("invalid token") }
-
   await next()
 })
 
-server.post("/api/get-config/:pcid", (c) => {
+server.post("/pcs/get-config/:pcid", (c) => {
   const pcid = c.req.param("pcid")
   const computerData = computersDB.get({ id: pcid })[0]
   const generalConfig = configDB.get({})[0]
@@ -36,7 +86,7 @@ server.post("/api/get-config/:pcid", (c) => {
   return c.json(config)
 })
 
-server.post("/api/get-actions/:pcid", (c) => {
+server.post("/pcs/get-actions/:pcid", (c) => {
   const pcid = c.req.param("pcid")
   const computer = computersDB.get({ id: pcid })[0]
 
@@ -48,11 +98,11 @@ server.post("/api/get-actions/:pcid", (c) => {
   return c.json(tasks)
 })
 
-server.post("/api/get-update", (c) => {
+server.post("/pcs/get-update", (c) => {
   return c.text("no update")
 })
 
-server.post("/api/mark-completed/:pcid", (c) => {
+server.post("/pcs/mark-completed/:pcid", (c) => {
   const pcid = c.req.param("pcid")
   const computer = computersDB.get({ id: pcid })[0]
   if (computer === undefined) { return c.text("no computer") }
@@ -69,7 +119,7 @@ server.post("/api/mark-completed/:pcid", (c) => {
   return c.text("done")
 })
 
-server.post("/api/mark-failed/:pcid", (c) => {
+server.post("/pcs/mark-failed/:pcid", (c) => {
   const pcid = c.req.param("pcid")
   const computer = computersDB.get({ id: pcid })[0]
   if (computer === undefined) { return c.text("no computer") }
@@ -84,8 +134,28 @@ server.post("/api/mark-failed/:pcid", (c) => {
   const info = (c.req.json() as unknown as { info?: string }).info
   if (info === undefined) { return c.text("no info") }
 
-  tasksDB.update({ id: taskId, computerId: pcid }, { details: info })
+  const oldDetails = tasksDB.get({ id: taskId, computerId: pcid })[0].details
+  const newDetails = `${oldDetails}${oldDetails !== "" ? "\n" : ""}FAILED: ${info}`
+
+  tasksDB.update({ id: taskId, computerId: pcid }, { details: newDetails })
+
+  return c.text("done")
 })
 
+server.post("/pcs/log/:pcid", (c) => {
+  const pcid = c.req.param("pcid")
+  const computer = computersDB.get({ id: pcid })[0]
+  if (computer === undefined) { return c.text("no computer") }
+
+  const type = (c.req.json() as unknown as { type?: "error" | "warning" | "normal" }).type
+  if (type === undefined) { return c.text("no type") }
+
+  const message = (c.req.json() as unknown as { message?: string }).message
+  if (message === undefined) { return c.text("no message") }
+
+  logsDB.add({ computerId: pcid, time: Date.now(), type, message })
+
+  return c.text("done")
+})
 
 export default server

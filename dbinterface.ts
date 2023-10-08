@@ -109,6 +109,11 @@ class DBTable<T extends Item> {
     const queryKeys = Object.keys(item)
     const queryValuesString = Object.values(item).map((value) => typeof value === "string" ? `'${value}'` : value).join(", ")
 
+    if (queryKeys.length === 0) {
+      this.db.query(`DELETE FROM ${this.table}`).run()
+      return
+    }
+
     const queryKeysString = queryKeys.join(", ")
     this.db.query(`DELETE FROM ${this.table} WHERE ${queryKeysString} = (${queryValuesString})`).run()
   }
@@ -122,9 +127,10 @@ class DBTable<T extends Item> {
   }
 }
 
-const db = new DBInterface(":memory:")
-const config = db.openTable<{ name: string, user: string, pass: string }>("config")
-config.add({ name: "test", user: "test", pass: "test" })
-console.log(config.get({ name: "test" }))
-config.update({ name: "test" }, { name: "test", user: "test2" })
-console.log(config.get({ name: "test" }))
+// const db = new DBInterface(":memory:")
+// const config = db.openTable<{ name: string, user: string, pass: string }>("config")
+// config.add({ name: "test", user: "test", pass: "test" })
+// console.log(config.get({ name: "test" }))
+// config.update({ name: "test" }, { name: "test", user: "test2" })
+// console.log(config.get({ name: "test" }))
+// config.del({ name: "test" })

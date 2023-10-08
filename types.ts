@@ -22,7 +22,7 @@ interface Task extends Item {
 }
 
 interface Config extends Item {
-  URL: string;
+  url: string;
   fallbackURL: string;
   checkInterval: number;
 }
