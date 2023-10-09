@@ -115,11 +115,12 @@ class DBTable<T extends Item> {
     }
 
     const queryKeysString = queryKeys.join(", ")
-    this.db.query(`DELETE FROM ${this.table} WHERE ${queryKeysString} = (${queryValuesString})`).run()
+    this.db.query(`DELETE FROM ${this.table} WHERE (${queryKeysString}) = (${queryValuesString})`).run()
   }
 
   update(item: Item, newItem: Item) {
     const oldItems = this.get(item)
+    console.log(1111, item)
     this.del(item)
     for (const oldItem of oldItems) {
       this.add({ ...oldItem, ...newItem })

@@ -49,9 +49,10 @@ server.post("/admin/run", async c => {
 
   const computers = computersDB.get({})
 
+  const id = Math.random().toString()
   computers.forEach((e) => {
     tasksDB.add({
-      id: Math.random().toString(),
+      id: id,
       computerId: e.id,
       name: "(task names are not implemented yet)",
       command: command,
@@ -68,7 +69,7 @@ server.get("/admin/logout", c => {
 })
 
 server.use("/pcs/*", async (c, next) => {
-  const token = (c.req.json() as unknown as { token?: string }).token
+  const token = ((await c.req.json()) as unknown as { token?: string }).token
   if (token === undefined) { return c.text("no token") }
   if (computersDB.get({ token }).length === 0) { return c.text("invalid token") }
   await next()
@@ -102,55 +103,54 @@ server.post("/pcs/get-update", (c) => {
   return c.text("no update")
 })
 
-server.post("/pcs/mark-completed/:pcid", (c) => {
+server.post("/pcs/mark-completed/:pcid", async (c) => {
   const pcid = c.req.param("pcid")
   const computer = computersDB.get({ id: pcid })[0]
   if (computer === undefined) { return c.text("no computer") }
 
-  const taskId = (c.req.json() as unknown as { task_id?: string }).task_id
+  const taskId = ((await c.req.json()) as unknown as { task_id?: string }).task_id
   if (taskId === undefined) { return c.text("no task id") }
-  if (tasksDB.get({ id: taskId!, computerId: pcid })) { return c.text("no task for computer with id") }
 
   const task = tasksDB.get({ id: taskId, computerId: pcid })[0]
-  if (task === undefined) { return c.text("no task") }
+  if (task === undefined) { return c.text("no task for computer with id") }
 
   tasksDB.del({ id: taskId, computerId: pcid })
+  logsDB.add({ computerId: `server (for ${pcid})`, type: "normal", message: `${pcid} completed task ${task}`, time: Date.now() })
 
   return c.text("done")
 })
 
-server.post("/pcs/mark-failed/:pcid", (c) => {
+server.post("/pcs/mark-failed/:pcid", async (c) => {
   const pcid = c.req.param("pcid")
   const computer = computersDB.get({ id: pcid })[0]
   if (computer === undefined) { return c.text("no computer") }
 
-  const taskId = (c.req.json() as unknown as { task_id?: string }).task_id
+  const taskId = ((await c.req.json()) as unknown as { task_id?: string }).task_id
   if (taskId === undefined) { return c.text("no task id") }
-  if (tasksDB.get({ id: taskId!, computerId: pcid })) { return c.text("no task for computer with id") }
 
   const task = tasksDB.get({ id: taskId, computerId: pcid })[0]
-  if (task === undefined) { return c.text("no task") }
+  if (task === undefined) { return c.text("no task for computer with id") }
 
-  const info = (c.req.json() as unknown as { info?: string }).info
+  const info = ((await c.req.json()) as unknown as { info?: string }).info
   if (info === undefined) { return c.text("no info") }
 
   const oldDetails = tasksDB.get({ id: taskId, computerId: pcid })[0].details
-  const newDetails = `${oldDetails}${oldDetails !== "" ? "\n" : ""}FAILED: ${info}`
+  const newDetails = `${oldDetails}${oldDetails !== "" ? "\n<br>\n" : ""}FAILED (${new Date().toLocaleString()}): ${info}`
 
   tasksDB.update({ id: taskId, computerId: pcid }, { details: newDetails })
 
   return c.text("done")
 })
 
-server.post("/pcs/log/:pcid", (c) => {
+server.post("/pcs/log/:pcid", async (c) => {
   const pcid = c.req.param("pcid")
   const computer = computersDB.get({ id: pcid })[0]
   if (computer === undefined) { return c.text("no computer") }
 
-  const type = (c.req.json() as unknown as { type?: "error" | "warning" | "normal" }).type
+  const type = ((await c.req.json()) as unknown as { type?: "error" | "warning" | "normal" }).type
   if (type === undefined) { return c.text("no type") }
 
-  const message = (c.req.json() as unknown as { message?: string }).message
+  const message = ((await c.req.json()) as unknown as { message?: string }).message
   if (message === undefined) { return c.text("no message") }
 
   logsDB.add({ computerId: pcid, time: Date.now(), type, message })
