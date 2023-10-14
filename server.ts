@@ -24,7 +24,9 @@ function log(message: string) {
 
 log("Server started, computers added to DB, and tables prepared.")
 
-server.get("/exists", c => c.text("exists -- AHS Room 310 PC Manager"))
+server.all("/pcs/exists/*", c => c.text("exists -- AHS Room 310 PC Manager"))
+server.all("/exists", c => c.text("exists -- AHS Room 310 PC Manager"))
+
 
 server.get("/", c => c.redirect("/admin/dashboard"))
 
@@ -94,9 +96,13 @@ server.post("/pcs/get-actions/:pcid", (c) => {
   if (computer === undefined) { return c.text("no computer") }
 
   const tasks = tasksDB.get({ computerId: pcid })
-    .map(task => ({ [task.id]: task.command }))
 
-  return c.json(tasks)
+  const tasksObject: Record<string, string> = {}
+  for (let item of tasks) {
+    tasksObject[item.id] = item.command
+  }
+
+  return c.json(tasksObject)
 })
 
 server.post("/pcs/get-update", (c) => {
@@ -138,6 +144,8 @@ server.post("/pcs/mark-failed/:pcid", async (c) => {
   const newDetails = `${oldDetails}${oldDetails !== "" ? "\n<br>\n" : ""}FAILED (${new Date().toLocaleString()}): ${info}`
 
   tasksDB.update({ id: taskId, computerId: pcid }, { details: newDetails })
+
+  console.log(newDetails)
 
   return c.text("done")
 })

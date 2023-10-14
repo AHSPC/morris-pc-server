@@ -3,7 +3,7 @@ GET /exists -> "exists" # so that if it changes then get new URL from fallback (
 GET / -> Dashboard
 
 POST /get-actions/<pc_id>
-    - { "token": "..." } -> { "actions": [ { "<task_id>": "<cmd>" } ] }
+    - { "token": "..." } -> { "<task_id>": "<cmd>" }
 
 POST /get-config/<pc_id>
     - { "token": "..." } -> Config # figure this out later
