@@ -32,3 +32,20 @@ console.log(await a.text())
 //   })
 // })
 // console.log(await a.text())
+//
+
+a = await fetch('localhost:3000/init-get-config',
+  // {
+  //   method: 'POST', body: JSON.stringify({
+  //     token: '12345'
+  //   })
+  // }
+)
+console.log(await a.text())
+
+a = await fetch('localhost:3000/pcs/get-update', {
+  method: 'POST', body: JSON.stringify({
+    token: '12345'
+  })
+})
+Bun.write("./test", await a.blob())

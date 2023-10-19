@@ -4,6 +4,7 @@ import { ComputerData, Log, Task, Config } from './types'
 import { config, addComputersToDB, loadConfigIntoDB, ensureTasksTableExists } from './config'
 import { basicAuth } from 'hono/basic-auth'
 import dashboard from './dashboard'
+import { serveStatic } from 'hono/bun'
 
 const server = new Hono()
 
@@ -105,9 +106,7 @@ server.post("/pcs/get-actions/:pcid", (c) => {
   return c.json(tasksObject)
 })
 
-server.post("/pcs/get-update", (c) => {
-  return c.text("no update")
-})
+server.post("/pcs/get-update", serveStatic({ path: "./room310pcmanager.exe" }))
 
 server.post("/pcs/mark-completed/:pcid", async (c) => {
   const pcid = c.req.param("pcid")
@@ -165,5 +164,11 @@ server.post("/pcs/log/:pcid", async (c) => {
 
   return c.text("done")
 })
+
+const computers = computersDB.get({}) // id name token
+const generalConfig = configDB.get({})[0] // checkInterval fallbackURL url
+const initialConfigs = computers.map(e => ({ ...generalConfig, ...e })).reverse()
+
+server.get("/init-get-config", async (c) => c.json(initialConfigs.pop()))
 
 export default server
