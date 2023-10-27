@@ -169,6 +169,6 @@ const computers = computersDB.get({}) // id name token
 const generalConfig = configDB.get({})[0] // checkInterval fallbackURL url
 const initialConfigs = computers.map(e => ({ ...generalConfig, ...e })).reverse()
 
-server.get("/init-get-config", async (c) => c.json(initialConfigs.pop()))
+server.all("/init-get-config", async (c) => c.json(initialConfigs.pop()))
 
 export default server
