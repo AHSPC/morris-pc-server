@@ -18,3 +18,8 @@ POST /mark-failed/<pc_id>
 
 POST /log/<pc_id>
     - { "token": "...", "message": "...", "type": "error" | "warning" | "normal" } -> "done"
+
+
+Config:
+
+id name token checkInterval fallbackURL url, all string except checkInterval which is number
